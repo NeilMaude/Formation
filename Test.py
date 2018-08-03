@@ -9,12 +9,12 @@ for child in e:
 
 import json
 
-with open('D:\\git\\Python\\Formation\\Samples\\DVLA - HGV Daily Check.json') as f:
+with open('D:\Git\Python\Formation\FTP\BMW approved used car check-12763\Form-99889\BMW approved used car check.json') as f:
     data = json.load(f)
 
 for d in data:
     print(d)
 
-for f in data['form_fields']:
-    print(f)
+print('\nSpecific field extract')
+print(data['8'])
 
