@@ -9,6 +9,7 @@
 import sys                                  # System functions, such as command line arguments
 import os                                   # OS functions, such as directory scanning
 import shutil                               # additional file copy functions
+import stat                                 # needed for CHMOD
 import mstore                               # mstore database functions
 import mstoreenvironment as ENV             # mstore environment parameters for this system
 import json                                 # JSON file parsing library
@@ -29,13 +30,15 @@ def connect_to_mstore():
 
 # helper function - prune a directory tree
 # this also removes read-only files, unlike shutil.rmtree()
-def prune_directory(sDirectory):
+def prune_directory(sDirectory, fRetainLast=False):
     for root, dirs, files in os.walk(sDirectory, topdown=False):
         for name in files:
             os.chmod(os.path.join(root, name), stat.S_IWRITE)
             os.remove(os.path.join(root, name))
         for name in dirs:
             os.rmdir(os.path.join(root, name))
+    if not fRetainLast:
+        os.rmdir(sDirectory)
 
 # helper function - copy a file and optionally delete the source
 def copy_file(sSourceFileWithExtension, sTargetFileWithExtension):
@@ -160,13 +163,15 @@ def get_values(s_JSON, field_list):
         return []
 
 # write fields to SQL database, return the unique file name to use
-def write_fields(md, values, s_original_path):
+def write_fields(md, values, s_original_path, s_form_ref='unknown', s_form_id='unknown'):
     # md will be an mstore database object
     # values will be a list of tuples (value, field)
     #print('Hello!')
     sSQL = 'insert into ' + ENV.FORMATION_DATA_TABLE
-    sFields = 'originalpath'
+    sFields = 'originalpath, formtype, formref'
     sValues = md.quote_string(s_original_path)
+    sValues += ',' + md.quote_string(s_form_ref)
+    sValues += ',' + md.quote_string(s_form_id)
     #print(sSQL)
     for fv in values:
         sFields += ',' + fv[1]
@@ -214,14 +219,14 @@ def run_process():
                 # form is tuple of (folder, JSON file, PDF file) - files don't have a path appended
                 s_JSON_file = os.path.join(form[0],form[1])
                 s_PDF_file = os.path.join(form[0],form[2])
-                print(s_JSON_file,s_PDF_file)
+                #print(s_JSON_file,s_PDF_file)
 
                 # load the JSON and get the values
                 values = get_values(s_JSON_file,field_list)
 
                 # if there are no values, still process this file - likely a new form
                 # write the JSON data to mstore and get a unique Id - this will be the unique file Id
-                new_id = write_fields(md, values, s_PDF_file)
+                new_id = write_fields(md, values, s_PDF_file, str(nFormId), get_form_type_id(form[0]))
 
                 s_output_PDF = str(new_id) + '.pdf'
                 s_output_PDF = os.path.join(s_output_location, s_output_PDF)
@@ -319,7 +324,7 @@ def unit_tests():
         values = get_values(form_JSON, field_list)
         print('Values found for %s: (%d)' % (form_JSON, len(values)))
         for f in values:
-            print('Ref: %s, for field: %s' % (f[0] ,f[1]))
+            print('Value: %s, for field: %s' % (f[0] ,f[1]))
         n_pass += 1
     except:
         print('Get value from form failed...')
