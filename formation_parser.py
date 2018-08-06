@@ -175,7 +175,7 @@ def write_fields(md, values, s_original_path, s_form_ref='unknown', s_form_id='u
     #print(sSQL)
     for fv in values:
         sFields += ',' + fv[1]
-        sValues += ',' + md.quote_string(fv[0])
+        sValues += ',' + md.quote_string(str(fv[0]))            # str() because might be a numeric
     sSQL += '(' + sFields + ') values (' + sValues + ')'
     try:
         md.execute(sSQL)
